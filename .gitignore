@@ -1,0 +1,17 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# 검증 하네스가 매 실행마다 새로 쓰는 리포트
+tools/verify-report.txt
+
+# 렌더 미리보기와 스크린샷은 스크립트로 언제든 다시 만들 수 있는 생성물
+blender/_preview/
+tools/_shots/
+
+# 기획서 docx 에서 뽑아낸 추출물 (원본 docx 가 원천)
+tools/_docx/
+
+# 문서를 열어둔 동안 만들어지는 잠금 파일 (워드 / 리브레오피스)
+~$*.docx
+.~lock.*#
