@@ -2,6 +2,9 @@
 .godot/
 /android/
 
+# 파이썬 바이트코드 캐시
+__pycache__/
+
 # 검증 하네스가 매 실행마다 새로 쓰는 리포트
 tools/verify-report.txt
 
@@ -15,3 +18,6 @@ tools/_docx/
 # 문서를 열어둔 동안 만들어지는 잠금 파일 (워드 / 리브레오피스)
 ~$*.docx
 .~lock.*#
+
+# 기획서 수정 전 안전 사본 (git 이력이 원본 역할을 한다)
+claudedocs/기획서백업/
