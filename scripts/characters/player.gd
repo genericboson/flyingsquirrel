@@ -10,7 +10,10 @@ extends CharacterBody3D
 ##   Space   지상에서 점프 / 공중에서 누르고 있으면 활공
 ##   마우스  카메라 회전
 ##
-## 모델의 앞쪽은 +Z 이므로 방향 정렬에 atan2(d.x, d.z) 를 쓴다.
+## 모델의 앞쪽은 +Z 다. 자세는 yaw 하나가 아니라 basis 로 들고 있는다
+## (수직 기둥에 배를 붙인 자세처럼 yaw 외의 축이 필요한 자세를 담기 위해).
+
+const Layers = preload("res://scripts/physics_layers.gd")
 
 const MODEL_PATH := "res://models/flying_squirrel.glb"
 
@@ -48,12 +51,21 @@ var state: State = State.GROUND
 var _model: Node3D
 var _anim: AnimationPlayer
 var _current_clip := ""
-var _facing := 0.0
+
+## 몸의 자세. yaw 하나(rotation.y)로는 "수직 기둥에 배를 붙인 자세" 같은 것을
+## 표현할 수 없어 임의 회전을 담을 수 있는 basis 로 다룬다.
+## 규약: 이 basis 의 +Z 가 모델이 바라보는 앞, +Y 가 등(back) 쪽이다.
+var _orientation := Basis.IDENTITY
 
 
 func _ready() -> void:
+	# 충돌 레이어 규약: scripts/physics_layers.gd
+	# 플레이어는 레이어 1, 지형(2)/나무(3) 와만 부딪힌다.
+	collision_layer = Layers.PLAYER
+	collision_mask = Layers.SOLID
+
 	_build_body()
-	_facing = rotation.y
+	_orientation = basis.orthonormalized()
 
 
 # --- 몸체 구성 ---------------------------------------------------------------
@@ -111,10 +123,16 @@ func _movement_dir() -> Vector3:
 	return dir.normalized() if dir.length_squared() > 0.0001 else Vector3.ZERO
 
 
+## 발밑 '지면' 까지의 거리. 활공 진입 판정(glide_min_height)에만 쓴다.
+##
+## 레이 대상을 지형 레이어로 한정하는 것이 핵심이다. 소나무 숲에서는 플레이어
+## 바로 아래를 나뭇가지가 지나가는데, 그 가지가 레이에 걸리면 "지면이 코앞"으로
+## 잘못 읽혀 활공이 시작되지 않는다. 나무는 레이어 3(TREE)이라 여기 걸리지 않는다.
 func _height_above_ground() -> float:
 	var space := get_world_3d().direct_space_state
 	var from := global_position
 	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 50.0)
+	q.collision_mask = Layers.TERRAIN
 	q.exclude = [get_rid()]
 	var hit := space.intersect_ray(q)
 	if hit.is_empty():
@@ -175,16 +193,40 @@ func _process_glide(dir: Vector3, delta: float) -> void:
 	if dir != Vector3.ZERO:
 		_face_toward(dir, glide_turn_speed * delta)
 
-	var fwd := Vector3(sin(_facing), 0.0, cos(_facing))
+	var fwd := _orientation.z   # basis 의 +Z 가 모델의 앞
 	velocity.x = move_toward(velocity.x, fwd.x * glide_speed, 8.0 * delta)
 	velocity.z = move_toward(velocity.z, fwd.z * glide_speed, 8.0 * delta)
 
 
-## 모델의 앞(+Z)이 dir 을 향하도록 부드럽게 돌린다
+## 모델의 앞(+Z)이 dir 을 향하도록 부드럽게 돌린다 (등은 하늘 쪽으로 유지).
 func _face_toward(dir: Vector3, weight: float) -> void:
-	var target := atan2(dir.x, dir.z)
-	_facing = lerp_angle(_facing, target, clampf(weight, 0.0, 1.0))
-	rotation.y = _facing
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.length_squared() < 0.000001:
+		return
+	_turn_to(basis_facing(flat.normalized(), Vector3.UP), weight)
+
+
+## 자세를 목표 basis 로 최단 경로 보간한다.
+## yaw 만 다른 두 자세 사이에서는 lerp_angle 과 같은 결과가 나온다.
+func _turn_to(target: Basis, weight: float) -> void:
+	var w := clampf(weight, 0.0, 1.0)
+	var q := _orientation.get_rotation_quaternion().slerp(target.get_rotation_quaternion(), w)
+	_orientation = Basis(q.normalized())
+	basis = _orientation
+
+
+## 앞(+Z)이 fwd, 등(+Y)이 up_hint 쪽인 정규직교 basis.
+## up_hint 를 바꾸면 벽/기둥에 붙은 자세도 같은 함수로 만들 수 있다.
+static func basis_facing(fwd: Vector3, up_hint: Vector3) -> Basis:
+	var z := fwd.normalized()
+	var x := up_hint.cross(z)
+	if x.length_squared() < 0.000001:
+		# up_hint 와 fwd 가 평행하면 축이 정해지지 않는다. 다른 축으로 다시 잡는다.
+		x = Vector3.FORWARD.cross(z)
+		if x.length_squared() < 0.000001:
+			x = Vector3.RIGHT.cross(z)
+	x = x.normalized()
+	return Basis(x, z.cross(x), z)
 
 
 # --- 애니메이션 -------------------------------------------------------------
