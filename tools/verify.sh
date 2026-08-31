@@ -8,6 +8,7 @@
 #   1. import : 에셋 임포트 (.godot 캐시 생성)
 #   2. check  : 모든 .gd 파일 구문 검사
 #   3. smoke  : 메인 씬을 N 프레임 돌린 뒤 종료, 런타임 에러 수집
+#   4. tests  : tools/tests/*.gd 기능 테스트 (종료 코드로 합격/불합격)
 #
 # 사용:
 #   bash tools/verify.sh
@@ -173,6 +174,54 @@ if [ -n "$diag" ]; then
   emit ""
   emit "게임 자체 진단:"
   printf '%s\n' "$diag" | sed 's/^/    /' | tee -a "$REPORT"
+fi
+
+# --- 4) 기능 테스트 ----------------------------------------------------------
+# tools/tests/*.gd 는 SceneTree 스크립트다. 스스로 판정해 종료 코드로 알려 준다
+# (0 = 통과, 그 밖 = 불합격). 구문 검사·스모크 런이 잡지 못하는 "동작이 맞는가" 를 본다.
+emit ""
+mapfile -t TESTS < <(find "$PROJ_UNIX/tools/tests" -name '*.gd' -type f 2>/dev/null | sort)
+
+if [ "${#TESTS[@]}" -eq 0 ]; then
+  emit "[4] 기능 테스트 : 대상 없음 (tools/tests/*.gd 0개)"
+else
+  detail=""
+  tn=0
+  measured=""
+  for t in "${TESTS[@]}"; do
+    rel="${t#$PROJ_UNIX/}"
+    tag="test_$(echo "$rel" | tr -c 'A-Za-z0-9' '_')"
+    run_godot "$tag" --headless --path "$PROJ" --script "res://$rel"
+    problems="$(problems_from "$RUN_LOG")"
+    # 테스트는 불합격을 종료 코드로 알린다. 로그에 아는 결함 패턴이 없어도
+    # 코드가 0이 아니면 실패다. 그때는 테스트가 스스로 남긴 판정 줄을 보여준다.
+    if [ -z "$problems" ] && [ "$RUN_EXIT" -ne 0 ]; then
+      verdict="$(tr -d '\r' < "$RUN_LOG" 2>/dev/null | grep -aE '^\[[^]]+\] (X |판정=)' | head -5)"
+      problems="${verdict:-$(exit_code_problem)}"
+    fi
+    if [ -n "$problems" ]; then
+      n=$(printf '%s\n' "$problems" | wc -l)
+      tn=$((tn + n))
+      detail="${detail}    [X] ${rel}"$'\n'"$(printf '%s\n' "$problems" | sed 's/^/        - /')"$'\n'
+    fi
+    measured="${measured}$(tr -d '\r' < "$RUN_LOG" 2>/dev/null | grep -a '^\[측정\]')"$'\n'
+  done
+  if [ "$tn" -eq 0 ]; then
+    emit "[4] 기능 테스트 : 통과  (테스트 ${#TESTS[@]}개)"
+  else
+    FAIL_COUNT=$((FAIL_COUNT + tn))
+    emit "[4] 기능 테스트 : 실패 (${tn}건, 테스트 ${#TESTS[@]}개)"
+    printf '%s' "$detail" | tee -a "$REPORT"
+  fi
+
+  # 테스트가 남긴 측정값 ([측정] 접두사) 은 통과/실패와 무관하게 보여준다.
+  # 스모크 런의 [진단] 블록과 같은 취지 — 수치가 조용히 변하는 것을 눈에 띄게 한다.
+  measured="$(printf '%s' "$measured" | grep -a '^\[측정\]' | sort -u)"
+  if [ -n "$measured" ]; then
+    emit ""
+    emit "기능 테스트 측정값:"
+    printf '%s\n' "$measured" | sed 's/^/    /' | tee -a "$REPORT"
+  fi
 fi
 
 # --- 결과 --------------------------------------------------------------------
