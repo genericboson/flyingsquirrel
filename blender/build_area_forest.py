@@ -5,9 +5,11 @@
   「하늘 다람쥐는 여기저기의 소나무 사이를 활강하면서 목적지까지 이동해야한다.」
   「이 지역의 반대편 쪽의 다음 지역으로 가는 병목지점까지 가면 다음 지역으로 전환된다.」
 
-규모 (요구사항.md M2 — 축소판):
-  소나무 9그루 / 나무는 100m 사방 안 / 눈 지면은 여유를 둔 130m 사방 /
-  나무 간격 18~26m / 한쪽 구석에서 반대쪽 구석으로 이어지는 사슬 형태.
+규모 (요구사항.md M2 — 축소판 / 2026-08-31 사용자가 축척 N=16 확정):
+  소나무 9그루 / 나무는 1935m 사방 안 / 눈 지면은 여유를 둔 2515m 사방 /
+  나무 간격 356~468m / 한쪽 구석에서 반대쪽 구석으로 이어지는 사슬 형태.
+  옛 축척(100m 사방 / 간격 18~26m)에 build_pine_tree.SCALE = 19.347 을 곱한 값이다.
+  왜 활공 거리(1529m)가 아니라 이 간격인지는 아래 LAYOUT_NOTE 에 적었다.
   병목 지점 오브젝트는 형태 미정이라 이번 범위 밖 (만들지 않는다).
 
 코더와의 계약 (오브젝트 이름) — world.gd 가 이 접두사로 충돌 레이어를 나눈다:
@@ -76,12 +78,23 @@ rad = pine.rad
 # 나무 자체의 치수는 build_pine_tree.py 에 있다. 여기는 '배치' 만 정한다.
 # =============================================================================
 
+# 나무가 N=16 축척(높이 348m / 수관 폭 201m)으로 커졌다. 배치를 그대로 두면
+# 9그루가 한 그루 굵기 안에 뭉친다. 배치 전체를 나무와 **같은 배율 S** 로 늘린다.
+#
+# 왜 활공 거리(1529m)에 맞추지 않는가 — 판단 근거는 이 파일 아래 LAYOUT_NOTE 참고.
+S = pine.SCALE                 # 19.347353935 (build_pine_tree.py 가 계산한 값)
+
 TREE_COUNT = 9                 # 소나무 그루 수 (M2: 8~10그루)
-TREE_FIELD = 100.0             # 나무가 들어가는 정사각 범위 (m). 좌표는 ±50.
-GROUND_SIZE = 130.0            # 눈 지면 한 변 (m). 가장자리에서 떨어지지 않게 여유.
-GROUND_GRID = 28               # 지면 격자 분할 (칸 수). trimesh 충돌이 되므로 과하지 않게.
-GROUND_AMP = (0.85, 0.42, 0.23)   # 기복 3중 파의 진폭 (합 1.50m → 높이 ±1.5m)
-TREE_SINK = 0.20               # 밑동을 지면에 파묻는 깊이 (m). 뜨는 것보다 낫다.
+TREE_FIELD = 100.0 * S         # 나무가 들어가는 정사각 범위 (m) — 1934.7m
+GROUND_SIZE = 130.0 * S        # 눈 지면 한 변 (m) — 2515.2m
+GROUND_GRID = 80               # 지면 격자 분할 (칸 수). 한 칸 31.4m.
+                               # 28 그대로 두면 한 칸이 90m 라 삼각형 하나가
+                               # 다람쥐 74마리 폭이 되어 지면이 각진 판으로 보인다.
+GROUND_AMP = (0.85 * S, 0.42 * S, 0.23 * S)   # 기복 진폭 (합 29.0m)
+GROUND_WAVE_SCALE = S / 2.2    # 파장 배율. S 를 그대로 쓰면 파장이 2.2km 가 되어
+                               # 2.5km 지면에 언덕이 하나뿐이다. 2.2 로 나눠
+                               # 파장 360~1170m (나무 간격과 같은 자릿수)로 맞춘다.
+TREE_SINK = 0.20 * S           # 밑동을 지면에 파묻는 깊이 (m) — 3.87m
 
 # 나무 3종만 실제로 만들고 나머지는 메시를 공유한다.
 # build_pine_tree.py 의 SEED 만 갈아끼우므로 형상 규격은 그대로다
@@ -92,6 +105,7 @@ VARIANT_SEEDS = (20260831, 71042, 330517)
 # 그 축에 수직인 좌우 흔들림 w 로 적는다. 좌우로 지그재그를 넣어야
 # 100m 사방 안에서도 이웃 간격을 18~26m 로 벌릴 수 있다.
 CHAIN_AXIS_DEG = 45.0
+CHAIN_UNIT = S                 # 아래 (s, w) 는 옛 축척의 m 값. 여기에 이 배율을 곱한다.
 CHAIN = (
     # (s, w, 변종, Y축 회전(도), 균일 스케일)
     (-56.0,   6.0, 0,  17.0, 1.02),   # 01 시작 나무 (구석)
@@ -105,6 +119,34 @@ CHAIN = (
     ( 56.0,   7.0, 2, 128.0, 0.86),   # 09 반대쪽 구석 (병목 지점이 놓일 방향)
 )
 
+# --- 배치를 이렇게 정한 이유 --------------------------------------------------
+LAYOUT_NOTE = """\
+N=16 에서 서로 부딪히는 두 숫자:
+  · 한 번 활공하면 1529m 를 간다 (활공비 4.375 × 나무 높이 348m).
+  · 수관 폭이 201m 다.
+
+간격을 활공 거리(1529m)에 맞추면 9그루 사슬이 12km 가 되고 지면은 13km 가 된다.
+지면 폴리곤도, 안개 설정도, 이동 시간도 전부 무너진다. 그리고 실제로 그렇게 놓으면
+'최고점에서 정확히 떠서 지면 높이까지 내려와야 겨우 닿는다' — 여유가 0 이라
+한 번만 삐끗해도 추락이다. 게임으로서 나쁜 수치다.
+
+그래서 **배치 전체를 나무와 같은 배율 S 로 늘렸다.** 결과:
+  · 이웃 간격 356~468m (평균 395m)
+  · 수관 폭 201m → 수관 사이가 155~267m 벌어져 서로 닿지는 않는다.
+    다만 눈높이에서는 나무 한 그루가 화면을 가득 채우고 그 뒤로 다음 나무가 겹쳐
+    보이므로 '숲' 으로 읽힌다 (_preview/area_forest.png 의 눈높이 컷).
+  · 활공 예산이 나무 높이에 그대로 대응한다:
+      가장 낮은 가지 106m 에서 뛰면 465m  → 딱 옆 나무 하나
+      2층   가지 171m 에서 뛰면 748m  → 두 그루 건너
+      꼭대기       348m 에서 뛰면 1523m → 사슬의 3분의 2
+    즉 '얼마나 올라갔는가' 가 '몇 그루를 건너뛰는가' 로 바로 번역된다.
+    간격을 수관 폭(201m)까지 좁히면 가장 낮은 가지에서도 두 그루를 건너뛰어
+    이 대응이 무너지고, 높이를 올릴 이유가 사라진다.
+  · 그루 수는 9 를 유지했다. 줄이면 사슬이 짧아져 지역이 더 빨리 끝나지만,
+    요구사항 M2 가 8~10그루를 요구하고 폴리곤은 그루 수에 비례하므로
+    성능 문제가 확인되기 전에는 명세를 지킨다.
+"""
+
 GROUND_SNOW_ROUGHNESS = 0.90   # 넓은 면이라 나무 위의 눈보다 무광으로
 
 BRANCH_AXIS_TOL_DEG = 1.0      # 가지 +X 축 검증 허용 오차
@@ -116,9 +158,10 @@ BRANCH_AXIS_TOL_DEG = 1.0      # 가지 +X 축 검증 허용 오차
 def ground_height(x, y):
     """지면의 높이(m). 나무를 앉힐 때도 이 함수를 쓴다. 최대 진폭 ±1.5m."""
     a0, a1, a2 = GROUND_AMP
-    return (a0 * math.sin(x * 0.0555 + 0.70) * math.cos(y * 0.0472 - 0.31)
-            + a1 * math.sin(x * 0.1080 - 1.90) * math.sin(y * 0.0930 + 2.20)
-            + a2 * math.cos((x + y) * 0.1550 + 0.50))
+    k = 1.0 / GROUND_WAVE_SCALE
+    return (a0 * math.sin(x * 0.0555 * k + 0.70) * math.cos(y * 0.0472 * k - 0.31)
+            + a1 * math.sin(x * 0.1080 * k - 1.90) * math.sin(y * 0.0930 * k + 2.20)
+            + a2 * math.cos((x + y) * 0.1550 * k + 0.50))
 
 
 def ground_mesh_height(x, y):
@@ -162,7 +205,8 @@ def build_ground(mat):
     obj = pine.build_mesh_object("지면_눈", verts, faces, mat, smooth=True)
     zs = [v[2] for v in verts]
     log(f"지면_눈: {GROUND_SIZE:.0f}m x {GROUND_SIZE:.0f}m, 격자 {GROUND_GRID}x{GROUND_GRID} "
-        f"(정점 {len(verts)}, 사각면 {len(faces)}), 높이 {min(zs):+.2f} ~ {max(zs):+.2f}m")
+        f"(한 칸 {step:.1f}m, 정점 {len(verts)}, 사각면 {len(faces)}), "
+        f"높이 {min(zs):+.2f} ~ {max(zs):+.2f}m")
     return obj
 
 
@@ -242,6 +286,7 @@ def chain_positions():
     px, py = -math.sin(a), math.cos(a)
     out = []
     for s, w, variant, yaw, scale in CHAIN:
+        s, w = s * CHAIN_UNIT, w * CHAIN_UNIT
         x = s * ux + w * px
         y = s * uy + w * py
         z = ground_height(x, y) - TREE_SINK
@@ -256,7 +301,7 @@ def place_tree(nn, parts, location, yaw_deg, scale):
     부모 Empty 는 균일 스케일이므로 자식 가지의 로컬 +X 방향이 보존된다.
     """
     empty = bpy.data.objects.new(f"나무_{nn}", None)
-    empty.empty_display_size = 1.5
+    empty.empty_display_size = 1.5 * S
     empty.location = location
     empty.rotation_euler = (0.0, 0.0, rad(yaw_deg))
     empty.scale = (scale, scale, scale)
@@ -592,17 +637,19 @@ def render_preview(path, trees, tile_w=680, tile_h=520):
 
     # 위에서 보는 시점은 지면 정사각형이 화면에서도 정사각형으로 보이게
     # 방위각을 -90도(= -Y 쪽)로 맞춘다. 비스듬히 보면 마름모가 되어 간격 판단이 어렵다.
+    eye = 2.0            # 다람쥐 눈높이 (m). ★ 배율을 곱하지 않는다 — 다람쥐는 안 커졌다.
+    low = pine.WHORL_LOWEST_Y      # 가장 낮은 가지 높이 106.4m
     top_views = [
         view_from("위에서(숲 전체)",
-                  Vector((0.0, -16.0, 114.0)), Vector((-3.0, 3.0, 6.0))),
-        view_from("사슬 방향(시작→반대편)",
-                  p1 - u * 88.0 + Vector((0, 0, 68.0)), p5 + Vector((0, 0, 10.0))),
+                  Vector((0.0, -16.0 * S, 114.0 * S)), Vector((-3.0 * S, 3.0 * S, 6.0 * S))),
+        view_from("1층 가지 높이(106m)에서 사슬 방향",
+                  p1 - u * 88.0 * S + Vector((0, 0, low)), p5 + Vector((0, 0, low))),
     ]
     bottom_views = [
-        view_from("눈높이(시작 나무 뒤)",
-                  p1 - u * 15.0 + Vector((0, 0, 3.0)), p3 + Vector((0, 0, 8.0))),
-        view_from("지면 가까이(숲 안쪽)",
-                  p5 + Vector((13.0, -9.0, 2.2)), p5 + Vector((0, 0, 7.0))),
+        view_from("다람쥐 눈높이 2m (시작 나무 뒤)",
+                  p1 - u * 15.0 * S + Vector((0, 0, eye)), p3 + Vector((0, 0, low * 0.9))),
+        view_from("다람쥐 눈높이 2m (숲 한가운데)",
+                  p5 + Vector((13.0 * S, -9.0 * S, eye)), p5 + Vector((0, 0, low * 0.9))),
     ]
 
     tiles_top = pine._render_views(scene, top_views, tile_w, tile_h, tmp_dir, lens=30)
@@ -619,8 +666,8 @@ def render_preview(path, trees, tile_w=680, tile_h=520):
     wide = os.path.splitext(path)[0] + "_눈높이.png"
     tiles = pine._render_views(
         scene,
-        [view_from("눈높이", p1 - u * 22.0 + Vector((0, 0, 2.5)),
-                   p5 + Vector((0, 0, 10.0)))],
+        [view_from("눈높이", p1 - u * 22.0 * S + Vector((0, 0, eye)),
+                   p5 + Vector((0, 0, low * 0.55)))],
         1360, 620, tmp_dir, lens=34)
     w, h = pine._save_sheet(tiles[0], wide)
     log(f"[렌더] 눈높이 와이드: {os.path.abspath(wide)} ({w}x{h})")
@@ -636,8 +683,11 @@ def main():
     trees = build_forest()
 
     report_objects()
+    pine.report_polycount("숲 전체")
     report_layout(trees)
     report_branch_axes(trees)
+    for line in LAYOUT_NOTE.rstrip().splitlines():
+        log("[배치근거] " + line)
 
     pine.export_glb(out)
     size = os.path.getsize(os.path.abspath(out))
