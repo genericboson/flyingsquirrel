@@ -15,12 +15,18 @@ extends SceneTree
 ## 모델러가 숲 배치를 바꿔도 그대로 유효하다.
 
 const Layers = preload("res://scripts/physics_layers.gd")
+const PlayerScript = preload("res://scripts/characters/player.gd")
 
-## 가지 윗면에서 이만큼 위에 서서 잰다 (가지가 바로 발밑에 있는 상황)
+## 가지 윗면에서 이만큼 위에 서서 잰다 (가지가 바로 발밑에 있는 상황).
+## 다람쥐 몸에 딸린 값이라 월드 축척을 곱하지 않는다.
 const ABOVE_BRANCH := 0.5
-## 지면 레이가 도달해야 하는 최대 거리보다 짧으면 안 된다 (player.gd 의 레이 길이)
-const RAY_LEN := 50.0
-## 지면까지의 거리와 가지까지의 거리가 최소 이만큼은 벌어져야 "가지를 무시했다"고 본다
+## 대조용 레이의 길이. **검사 대상과 같은 사거리를 써야 한다.**
+## 숫자를 따로 박아 두면 월드 축척이 바뀔 때 여기만 옛 값으로 남아, 게임은 멀쩡한데
+## 테스트만 "지면이 없다" 고 하는 거짓 실패가 난다 (N=16 재축척 때 50 m 가 남아 5건 실패).
+## 그래서 player.gd 의 상수를 그대로 읽는다 — 현재 967.4 m.
+const RAY_LEN := PlayerScript.GROUND_PROBE_RANGE
+## 지면까지의 거리와 가지까지의 거리가 최소 이만큼은 벌어져야 "가지를 무시했다"고 본다.
+## 표본이 의미 있는지 보는 하한일 뿐이라 축척과 무관하다 (실제 간격은 지금 100 m 이상).
 const MIN_SEPARATION := 1.0
 
 var _frames := 0

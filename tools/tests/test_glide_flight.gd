@@ -22,6 +22,9 @@ extends SceneTree
 const PlayerScript = preload("res://scripts/characters/player.gd")
 const Layers = preload("res://scripts/physics_layers.gd")
 
+## 아래 두 값은 **다람쥐의 활공 성능에 딸린 값이라 월드 축척을 곱하지 않는다.**
+## 하강 속도 glide_max_fall(2.4 m/s)로 가속 구간 약 3 m + 측정 구간 5 m 를 담을 여유다.
+## 나무가 커졌다고 늘리면 측정만 길어질 뿐 재는 값(활공비)은 달라지지 않는다.
 ## 나무 꼭대기 위로 이만큼 띄워서 시작한다 (가속 구간 + 측정 구간을 담을 여유)
 const START_CLEARANCE := 9.0
 ## 측정 구간의 하강량
@@ -90,6 +93,10 @@ func _launch() -> bool:
 	if _tree_top <= 0.0:
 		_bad("나무 메시를 찾지 못했다 (이름 계약 '기둥_' / '가지_' 확인 필요)")
 		return _finish()
+
+	# 시작 상태는 기둥에 붙어 있는 CLING 이다 (기획서 I4). 측정 전에 떼어낸다.
+	# release_cling() 이 속도를 주므로 자세와 속도는 그 뒤에 다시 잡는다.
+	_player.call("release_cling")
 
 	# 모델의 앞(+Z)이 월드 +X 를 향하게 세운다. 활공은 이 방향으로 나아간다.
 	var b: Basis = PlayerScript.basis_facing(Vector3.RIGHT, Vector3.UP)
