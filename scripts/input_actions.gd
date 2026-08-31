@@ -1,7 +1,10 @@
 extends RefCounted
 ## 조작 키 등록.
 ##
-## 기획서에 조작 항목이 자체가 없어 여기서 정했다 (claudedocs/요구사항.md F1~F4).
+## 기획서에 조작 항목이 자체가 없어 여기서 정했다 (claudedocs/요구사항.md F1~F8).
+##
+## Space 의 의미는 상태에 따라 갈린다 (player.gd):
+##   지상  점프 · 나무에 붙은 상태  뛰어내리기 · 공중  활공 켜기/끄기(토글)
 ## project.godot 에 직렬화된 InputEvent 를 손으로 써넣는 대신 코드로 등록한다.
 ## 키 배치가 한 곳에 모여 있어 읽기 쉽고, 파일 손상 위험이 없다.
 
@@ -14,6 +17,10 @@ const KEYS := {
 	"sprint": [KEY_SHIFT],
 	"camera_recenter": [KEY_C],
 	"ui_release_mouse": [KEY_ESCAPE],
+	## 눈에 파묻혀 게임오버가 된 뒤 시작 나무로 되돌아간다 (PD 결정, world.gd 참조)
+	"restart": [KEY_R],
+	## 좌하단 조작 안내 켜기·끄기
+	"ui_toggle_help": [KEY_F1],
 }
 
 ## 게임패드 (기획서 요구는 아니지만 3인칭 액션에는 사실상 필수)
@@ -21,6 +28,7 @@ const PAD_BUTTONS := {
 	"jump": [JOY_BUTTON_A],
 	"sprint": [JOY_BUTTON_LEFT_STICK],
 	"camera_recenter": [JOY_BUTTON_RIGHT_STICK],
+	"restart": [JOY_BUTTON_Y, JOY_BUTTON_START],
 }
 
 const PAD_AXES := {

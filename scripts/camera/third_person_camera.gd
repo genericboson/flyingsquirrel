@@ -9,7 +9,10 @@ extends Node3D
 ## 조작을 넘긴다. 아무 버튼이나 누르면 즉시 넘어간다.
 
 const Layers = preload("res://scripts/physics_layers.gd")
+const WorldScale = preload("res://scripts/world_scale.gd")
 
+## 아래 평소 3인칭 값들은 **다람쥐 몸 크기에 딸린 값이라 월드 축척을 곱하지 않는다.**
+## 다람쥐는 폭 1.209 m 그대로다. 여기에 19.35 를 곱하면 화면에서 다람쥐가 점이 된다.
 @export var target_path: NodePath
 @export var height := 1.15                ## 대상의 어느 높이를 바라볼지
 @export var distance := 5.0
@@ -25,9 +28,18 @@ const Layers = preload("res://scripts/physics_layers.gd")
 @export_group("오프닝 인트로")
 ## 기획서에는 "멀리 있는 카메라가 줌인하면서 서서히" 라고만 적혀 있고 수치가 없다.
 ## 아래는 PD 잠정치이며 사용자 확인 후 바뀔 수 있어 전부 export 로 뺐다.
+##
+## ★ 인트로가 물러나는 거리·높이는 **월드를 훑는 거리라 축척을 곱한다.**
+##   「멀리 있는 카메라」의 기준은 다람쥐가 아니라 **나무 한 그루가 화면에 들어오는가**
+##   이기 때문이다. 18 m 나무 시절의 40 m 를 그대로 두면 밑동 지름 19.35 m 기둥에서
+##   30 m 떨어진 자리가 되어 시야각 38도로는 화면이 통째로 기둥 표면이 된다(계산:
+##   30 m 에서 보이는 폭 20.6 m < 기둥 폭 19.35 m). 축척을 곱하면 774 m 로 물러나
+##   348 m 나무 전체가 들어온다.
+##   ⚠ 대신 시작 시점의 다람쥐는 1280 px 화면에서 약 3 px 이다. 「무엇을 보여줄
+##     것인가」는 연출 판단이라 PD 몫이다 (요구사항 미정 10·20 과 함께 볼 것).
 @export var intro_enabled := true
-@export var intro_distance := 40.0     ## 시작 지점이 대상에서 떨어진 수평 거리(m)
-@export var intro_height := 10.0       ## 시작 지점이 대상보다 높은 정도(m)
+@export var intro_distance := 40.0 * WorldScale.FACTOR   ## 시작 지점이 대상에서 떨어진 수평 거리(m) — 774.1 m
+@export var intro_height := 10.0 * WorldScale.FACTOR     ## 시작 지점이 대상보다 높은 정도(m) — 193.5 m
 @export var intro_yaw_offset := 28.0   ## 평소 카메라 방향에서 비껴 시작하는 각도(도)
 @export var intro_duration := 4.0      ## 평소 3인칭 위치까지 오는 데 걸리는 시간(초)
 @export var intro_fov := 38.0          ## 시작 시야각(망원). 끝나면 base_fov 로 수렴한다
@@ -149,6 +161,14 @@ func _hand_over_to_play_camera() -> void:
 		_intro_cam = null
 	_cam.make_current()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+## 대상 위치로 즉시 붙는다 (보간 없이). 재시작으로 플레이어가 순간이동했을 때
+## 카메라가 죽은 자리에서 시작 나무까지 훑고 날아가는 것을 막는다.
+func snap_to_target() -> void:
+	if _target == null:
+		return
+	global_position = _target.global_position + Vector3.UP * height
 
 
 func _unhandled_input(event: InputEvent) -> void:
