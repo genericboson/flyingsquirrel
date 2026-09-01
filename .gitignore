@@ -12,6 +12,11 @@ tools/verify-report.txt
 blender/_preview/
 tools/_shots/
 
+# glTF 에 내장된 텍스처를 Godot 임포터가 옆에 풀어놓는 캐시.
+# .glb 를 다시 임포트하면 다시 생긴다 — .glb 가 원천이다.
+models/*.png
+models/*.png.import
+
 # 기획서 docx 에서 뽑아낸 추출물 (원본 docx 가 원천)
 tools/_docx/
 
